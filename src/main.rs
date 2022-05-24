@@ -1,60 +1,88 @@
-use std::io::Write;
-
 mod config;
-
-//fn second() {
-//    let val = kmer_map.entry(kmer)
-//    .or_insert(HashMap::new())
-//    .entry(cb_int)
-//    .or_insert(0);
-//    *val += 1;
-//}
-
-fn first(
-    bed_file_path: &str,
-    genome_file_path: &str,
-    out_file: &str
-) {
-    let mut bed_reader = bio::io::bed::Reader::from_file(&bed_file_path).unwrap();
-    let mut reader = bio::io::fasta::IndexedReader::from_file(&genome_file_path).unwrap();
-
-    let mut file = std::fs::File::create(out_file).unwrap();
-    for (line_num, record) in bed_reader.records().enumerate() {
-        let bed_rec = record.expect("Error reading record.");
-        reader
-            .fetch(bed_rec.chrom(), bed_rec.start(), bed_rec.end())
-            .expect("Couldn't fetch interval");
-
-        let cb_str = bed_rec.name().unwrap();
-        let cb_int =
-            carina::barcode::cb_string_to_u64(&cb_str.as_bytes()[0..cb_str.len() - 2]).unwrap();
-
-        let mut seq = Vec::new();
-        reader.read(&mut seq).expect("Couldn't read the interval");
-
-        if seq.len() < config::KMER {
-            continue;
-        }
-
-        let total_kmers = seq.len() - config::KMER + 1;
-        (0..total_kmers).for_each(|i| {
-            let kmer = carina::barcode::cb_string_to_u64(&seq[i..i + config::KMER]).unwrap();
-            writeln!(file, "{}\t{}", kmer, cb_int).unwrap();
-        });
-
-        if line_num % 1_0_000 == 0 {
-            println!("\r Done {}_0K", line_num/1_0_000);
-            std::io::stdout().flush().unwrap();
-        }
-    }
-}
+mod old;
 
 fn main() {
-    let genome_file_path = "/brahms/srivastavaa/norma/data/k4me1/GRCh38.primary_assembly.genome.fa";
-    let bed_file_path = "/brahms/srivastavaa/norma/data/k4me1/H3K4me1_fragments.tsv";
+    let genome_file_path = "/brahms/srivastavaa/norma/data/k4me3/full_data/GRCh38.primary_assembly.genome.fa";
+    let bed_file_path = "/brahms/srivastavaa/norma/data/k4me3/full_data/H3K4me3_fragments.tsv";
+
+    let tuple_file = "/brahms/srivastavaa/norma/data/k4me3/all.tuples.tsv";
+
+    let whitelist_file = "/brahms/srivastavaa/norma/data/k4me3/cells.txt";
+    let cell_file = "/brahms/srivastavaa/norma/data/k4me3/cell.filtered.tuples.tsv";
+
+    let freq_file = "/brahms/srivastavaa/norma/data/k4me3/kmer.frequency.tsv";
+    let filter_file = "/brahms/srivastavaa/norma/data/k4me3/kmer.selected.tsv";
+    let fragment_file = "/brahms/srivastavaa/norma/data/k4me3/kmer.filtered.tuples.tsv";
     
-    let out_file = "/brahms/srivastavaa/norma/data/k4me1/tuples.tsv";
-    first(bed_file_path, genome_file_path, out_file);
+    let stats_file = "/brahms/srivastavaa/norma/data/k4me3/kmer.stats.txt";
+    let stats_in_file = "/brahms/srivastavaa/norma/data/k4me3/stats.selected.kmer.tsv";
+    let stats_out_file = "/brahms/srivastavaa/norma/data/k4me3/stats.tuple.txt";
+
+    let mat_file = "/brahms/srivastavaa/norma/data/k4me3/mat/";
+
+    let kind = "last_matrix";
+    match kind {
+        "tuple" => {        
+            old::make_tuples(bed_file_path, genome_file_path, tuple_file);
+            println!("Done making tuples");
+        },
+        "cells" => {
+            old::filter_cells(tuple_file, whitelist_file, cell_file);
+            println!("Done filtering cells");
+        },
+        "freq" => {
+            old::kmer_frequency(cell_file, freq_file);
+            println!("Done generating frequency");
+        },
+        "filter" => {
+            old::filter_kmer(freq_file, filter_file);
+            println!("Done filtering kmers");
+        },
+        "fragment" => {
+            old::filter_fragment(cell_file, filter_file, fragment_file);
+            println!("Done filtering fragments");
+        },
+        "stats" => {
+            old::get_stats(fragment_file, stats_file);
+            println!("Done grouping cells");
+        },
+        "bulk" => {
+            old::make_tuples(bed_file_path, genome_file_path, tuple_file);
+            println!("Done making tuples");
+
+            old::filter_cells(tuple_file, whitelist_file, cell_file);
+            println!("Done filtering cells");
+
+            old::kmer_frequency(cell_file, freq_file);
+            println!("Done generating frequency");
+
+            old::filter_kmer(freq_file, filter_file);
+            println!("Done filtering kmers");
+
+            old::filter_fragment(cell_file, filter_file, fragment_file);
+            println!("Done filtering fragments");
+
+            old::get_stats(fragment_file, stats_file);
+            println!("Done grouping cells");
+        },
+        "last" => {
+            old::filter_fragment(fragment_file, stats_in_file, stats_out_file);
+            println!("Done last cells");
+        },
+        "matrix" => {
+            old::write_matrix(stats_out_file, mat_file);
+            println!("Done writing matrix");
+        },
+        "last_matrix" => {
+            old::filter_fragment(fragment_file, stats_in_file, stats_out_file);
+            println!("Done last cells");
+
+            old::write_matrix(stats_out_file, mat_file);
+            println!("Done writing matrix");
+        },
+
+        _ => unreachable!()
+    };
 
     println!("\nAll Done");
 }

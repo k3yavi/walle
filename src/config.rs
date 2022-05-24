@@ -1,1 +1,1 @@
-pub const KMER: usize = 21;
+pub const KMER: usize = 9;
