@@ -4,6 +4,96 @@ use std::iter::FromIterator;
 
 use crate::config;
 
+// pub fn pipe() {
+//     let whitelist_file = "/brahms/srivastavaa/norma/data/k4me3/cells.txt";
+//     let cell_file = "/brahms/srivastavaa/norma/data/k4me3/cell.filtered.tuples.tsv";
+
+//     let freq_file = "/brahms/srivastavaa/norma/data/k4me3/kmer.frequency.tsv";
+//     let filter_file = "/brahms/srivastavaa/norma/data/k4me3/kmer.selected.tsv";
+//     let fragment_file = "/brahms/srivastavaa/norma/data/k4me3/kmer.filtered.tuples.tsv";
+    
+//     let stats_file = "/brahms/srivastavaa/norma/data/k4me3/kmer.stats.txt";
+//     let stats_in_file = "/brahms/srivastavaa/norma/data/k4me3/stats.selected.kmer.tsv";
+//     let stats_out_file = "/brahms/srivastavaa/norma/data/k4me3/stats.tuple.txt";
+
+//     let mat_file = "/brahms/srivastavaa/norma/data/k4me3/mat/";
+
+//     "tuple" => {        
+//         old::make_tuples(bed_file_path, genome_file_path, tuple_file);
+//         println!("Done making tuples");
+//     },
+//     "cells" => {
+//         old::filter_cells(tuple_file, whitelist_file, cell_file);
+//         println!("Done filtering cells");
+//     },
+//     "freq" => {
+//         old::kmer_frequency(cell_file, freq_file);
+//         println!("Done generating frequency");
+//     },
+//     "filter" => {
+//         old::filter_kmer(freq_file, filter_file);
+//         println!("Done filtering kmers");
+//     },
+//     "fragment" => {
+//         old::filter_fragment(cell_file, filter_file, fragment_file);
+//         println!("Done filtering fragments");
+//     },
+//     "stats" => {
+//         old::get_stats(fragment_file, stats_file);
+//         println!("Done grouping cells");
+//     },
+//     "bulk" => {
+//         old::make_tuples(bed_file_path, genome_file_path, tuple_file);
+//         println!("Done making tuples");
+
+//         old::filter_cells(tuple_file, whitelist_file, cell_file);
+//         println!("Done filtering cells");
+
+//         old::kmer_frequency(cell_file, freq_file);
+//         println!("Done generating frequency");
+
+//         old::filter_kmer(freq_file, filter_file);
+//         println!("Done filtering kmers");
+
+//         old::filter_fragment(cell_file, filter_file, fragment_file);
+//         println!("Done filtering fragments");
+
+//         old::get_stats(fragment_file, stats_file);
+//         println!("Done grouping cells");
+//     },
+//     "last" => {
+//         old::filter_fragment(fragment_file, stats_in_file, stats_out_file);
+//         println!("Done last cells");
+//     },
+//     "matrix" => {
+//         old::write_matrix(stats_out_file, mat_file);
+//         println!("Done writing matrix");
+//     },
+//     "last_matrix" => {
+//         old::filter_fragment(fragment_file, stats_in_file, stats_out_file);
+//         println!("Done last cells");
+
+//         old::write_matrix(stats_out_file, mat_file);
+//         println!("Done writing matrix");
+//     },
+
+// let motif = feats.entry(cb_str.to_owned())
+// .or_insert(vec![0; config::KMER * 4]);
+
+// for (idx, nt) in kmer.chars().enumerate() {
+// let mut offset = match nt {
+//     'A' | 'a' | 'N' => 0,
+//     'T' | 't' => 1,
+//     'C' | 'c' => 2,
+//     'G' | 'g' => 3,
+//     _ => unreachable!()
+// };
+// offset += idx * 4;
+
+// assert!(offset < config::KMER * 4);
+// motif[offset] += 1;
+// }
+
 pub fn make_tuples(
     bed_file_path: &str,
     genome_file_path: &str,
@@ -310,3 +400,87 @@ pub fn write_matrix(
         writeln!(file, "{}", carina::barcode::u64_to_cb_string(cname, 16).unwrap()).unwrap();
     }
 }
+
+// fn make_features(
+//     bed_file_path: &str,
+//     genome_file_path: &str,
+//     whitelist_file: &str,
+//     out_file: &str
+// ) {
+//     let filter_cells : HashSet<String> = {
+//         let file = std::fs::File::open(whitelist_file).unwrap();
+//         let reader = std::io::BufReader::new(file);
+    
+//         let mut filter_cells = Vec::with_capacity(20_000);
+//         for line in reader.lines() {
+//             let line = line.unwrap();
+//             let cb = line.to_string();
+    
+//             filter_cells.push(cb);
+//         }
+//         HashSet::from_iter(filter_cells)
+//     };
+
+//     println!("Reading Genome");
+//     let mut genome: HashMap<String, Vec<u8>> = HashMap::new();
+//     let genome_reader = bio::io::fasta::Reader::from_file(&genome_file_path).unwrap();
+//     for result in genome_reader.records() {
+//         let record = result.expect("Error during fasta record parsing");
+//         genome.insert(record.id().to_string(), record.seq().to_owned());
+//     }
+//     println!("Done Reading Genome");
+
+//     let mut bed_reader = {
+//         let file = std::fs::File::open(bed_file_path).unwrap();
+//         let reader = std::io::BufReader::new(file);
+//         bio::io::bed::Reader::new(reader)
+//     };
+
+//     let num_cells = filter_cells.len();
+//     let mut feats = HashMap::with_capacity(num_cells);
+//     for (line_num, record) in bed_reader.records().enumerate() {
+//         let bed_rec = record.expect("Error reading record.");
+//         let cb_str = bed_rec.name().unwrap().to_string();
+//         if ! filter_cells.contains(&cb_str) {
+//             continue;
+//         }
+
+//         let view = genome.get(bed_rec.chrom()).unwrap();
+//         let seq = &view[bed_rec.start() as usize..bed_rec.end() as usize];
+
+//         if seq.len() < config::KMER {
+//             continue;
+//         }
+
+//         let total_kmers = seq.len() - config::KMER + 1;
+//         (0..total_kmers).for_each(|i| {
+//             let kmer = carina::barcode::cb_string_to_u64(&seq[i..i + config::KMER]).unwrap();
+
+//             let count = feats.entry(cb_str.to_owned())
+//                 .or_insert(HashMap::new())
+//                 .entry(kmer)
+//                 .or_insert(0);
+//             *count += 1;
+//         });
+
+//         if line_num % 1_000_000 == 0 {
+//             print!("\r Done {}_M", line_num/1_000_000);
+//             std::io::stdout().flush().unwrap();
+//         }
+        
+//         if line_num > 1_000_000 { break; }
+//     }
+
+//     let mut row_index = 0;
+//     let mut mat: sprs::TriMat<usize> = sprs::TriMat::new((num_cells, 16384));
+//     for (_, cb_data) in feats {
+//         for (kmer, count) in cb_data {
+//             mat.add_triplet(row_index, kmer as usize, count);
+//         }
+//         row_index += 1;
+//     }
+
+//     let mat: sprs::CsMat<usize> = mat.to_csc();
+//     let mat_file_path = std::path::Path::new(out_file).join("mat.mtx");
+//     sprs::io::write_matrix_market(mat_file_path, &mat).unwrap();
+// }
